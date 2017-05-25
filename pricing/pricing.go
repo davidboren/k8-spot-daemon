@@ -59,8 +59,9 @@ func DescribePricing(sess *session.Session, spotConfig awscode.SpotConfig) []Ful
 			bigInstanceTypes[each.Name] = each
 		}
 	}
+	regionNames := []string{spotConfig.RegionName}
 
-	avgList := CompileAverages(sess, bigInstanceTypes, spotConfig.RegionNames,
+	avgList := CompileAverages(sess, bigInstanceTypes, regionNames,
 		time.Duration(spotConfig.HistoricalHours), TimeWeight)
 
 	sort.Sort(ByPricePerGB(avgList))

@@ -125,7 +125,7 @@ func init() {
 		&monitor,
 		"monitor",
 		"o",
-		true,
+		false,
 		"Whether or not the autoscaler should be updated (false), or the adjustments merely monitored and reported to standard out.")
 
 }

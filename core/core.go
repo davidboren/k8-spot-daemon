@@ -123,7 +123,7 @@ func RunDaemon(monitor bool, spotConfig awscode.SpotConfig) {
 
 		if int(podSummary["totalRunningPods"]) < spotConfig.MaxPodKills {
 			priceList := pricing.DescribePricing(sess, spotConfig)
-			UpdateLaunchConfiguration(sess, spotConfig, priceList, podSummary, clientset, true)
+			UpdateLaunchConfiguration(sess, spotConfig, priceList, podSummary, clientset, monitor)
 		} else {
 			fmt.Printf("Too many active pods (%v) to turn over cluster...\n", int(podSummary["totalRunningPods"]))
 		}

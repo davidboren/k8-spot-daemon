@@ -14,6 +14,13 @@
 			"path": "github.com/montanaflynn/stats",
 			"revision": "41c34e4914ec3c05d485e564d9028d8861d5d9ad",
 			"revisionTime": "2017-04-04T20:43:49Z"
+		},
+		{
+			"checksumSHA1": "4vOTwa36Ym9PozdS8+5Rcx3/zoQ=",
+			"path": "github.com/spf13/cobra",
+			"revision": "ca57f0f5dba473a8a58765d16d7e811fb8027add",
+			"revisionTime": "2017-05-20T17:28:06Z",
+			"tree": true
 		}
 	],
 	"rootPath": "github.com/davidboren/k8-spot-daemon"

@@ -13,6 +13,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/autoscaling"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/spf13/cobra"
 )
 
 func GetNewestFeed(svc *s3.S3, bucketName string, feedPrefix string) (string, error) {
@@ -180,19 +181,53 @@ func GetInstanceTypes(sess *session.Session) {
 }
 
 type SpotConfig struct {
-	MaxCV                        float64  `yaml:"maxCV"`
-	MinGB                        float64  `yaml:"minGB"`
-	MaxDollarsPerGB              float64  `yaml:"maxDollarsPerGB"`
-	MaxDollarsPerCPU             float64  `yaml:"maxDollarsPerCPU"`
-	AutoscalingGroupName         string   `yaml:"autoscalingGroupName"`
-	MaxAutoscalingNodes          int      `yaml:"maxAutoscalingNodes"`
-	HistoricalHours              float64  `yaml:"historicalHours"`
-	RegionNames                  []string `yaml:"regionNames"`
-	MaxTotalDollarsPerHour       float64  `yaml:"maxTotalDollarsPerHour"`
-	MinMarkupPercentage          float64  `yaml:"minMarkupPercentage"`
-	MinPriceDifferencePercentage float64  `yaml:"minPriceDifferencePercentage"`
-	MaxPodKills                  int      `yaml:"maxPodKills"`
-	MemoryBufferPercentage       float64  `yaml:"memoryBufferPercentage"`
+	MaxCV                        float64 `yaml:"maxCV"`
+	MinGB                        float64 `yaml:"minGB"`
+	MaxDollarsPerGB              float64 `yaml:"maxDollarsPerGB"`
+	MaxDollarsPerCPU             float64 `yaml:"maxDollarsPerCPU"`
+	AutoscalingGroupName         string  `yaml:"autoscalingGroupName"`
+	MaxAutoscalingNodes          int     `yaml:"maxAutoscalingNodes"`
+	HistoricalHours              float64 `yaml:"historicalHours"`
+	RegionName                   string  `yaml:"regionName"`
+	MaxTotalDollarsPerHour       float64 `yaml:"maxTotalDollarsPerHour"`
+	MinMarkupPercentage          float64 `yaml:"minMarkupPercentage"`
+	MinPriceDifferencePercentage float64 `yaml:"minPriceDifferencePercentage"`
+	MaxPodKills                  int     `yaml:"maxPodKills"`
+	MemoryBufferPercentage       float64 `yaml:"memoryBufferPercentage"`
+	UpdateIntervalSeconds        float64 `yaml:"updateIntervalSeconds"`
+}
+
+func GetSpotConfigFromCommand(cmd *cobra.Command) SpotConfig {
+	maxCV, _ := cmd.PersistentFlags().GetFloat64("maxCV")
+	minGB, _ := cmd.PersistentFlags().GetFloat64("minGB")
+	maxDollarsPerGB, _ := cmd.PersistentFlags().GetFloat64("maxDollarsPerGB")
+	maxDollarsPerCPU, _ := cmd.PersistentFlags().GetFloat64("maxDollarsPerCPU")
+	autoscalingGroupName, _ := cmd.PersistentFlags().GetString("autoscalingGroupName")
+	maxAutoscalingNodes, _ := cmd.PersistentFlags().GetInt("maxAutoscalingNodes")
+	historicalHours, _ := cmd.PersistentFlags().GetFloat64("historicalHours")
+	regionName, _ := cmd.PersistentFlags().GetString("regionName")
+	maxTotalDollarsPerHour, _ := cmd.PersistentFlags().GetFloat64("maxTotalDollarsPerHour")
+	minMarkupPercentage, _ := cmd.PersistentFlags().GetFloat64("minMarkupPercentage")
+	minPriceDifferencePercentage, _ := cmd.PersistentFlags().GetFloat64("minPriceDifferencePercentage")
+	maxPodKills, _ := cmd.PersistentFlags().GetInt("maxPodKills")
+	memoryBufferPercentage, _ := cmd.PersistentFlags().GetFloat64("memoryBufferPercentage")
+	updateIntervalSeconds, _ := cmd.PersistentFlags().GetFloat64("updateIntervalSeconds")
+
+	return SpotConfig{
+		MaxCV:                        maxCV,
+		MinGB:                        minGB,
+		MaxDollarsPerGB:              maxDollarsPerGB,
+		MaxDollarsPerCPU:             maxDollarsPerCPU,
+		AutoscalingGroupName:         autoscalingGroupName,
+		MaxAutoscalingNodes:          maxAutoscalingNodes,
+		HistoricalHours:              historicalHours,
+		RegionName:                   regionName,
+		MaxTotalDollarsPerHour:       maxTotalDollarsPerHour,
+		MinMarkupPercentage:          minMarkupPercentage,
+		MinPriceDifferencePercentage: minPriceDifferencePercentage,
+		MaxPodKills:                  maxPodKills,
+		MemoryBufferPercentage:       memoryBufferPercentage,
+		UpdateIntervalSeconds:        updateIntervalSeconds}
 }
 
 func GetAutoscaler(sess *session.Session, autoscalerName string) *autoscaling.Group {

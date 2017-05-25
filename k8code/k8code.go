@@ -1,8 +1,6 @@
 package k8code
 
 import (
-	"flag"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api/v1"
@@ -11,13 +9,13 @@ import (
 )
 
 func GetClientSet() *kubernetes.Clientset {
-	kubeconfig := flag.String("kubeconfig", "/Users/dboren/.kube/config", "absolute path to the kubeconfig file")
-	flag.Parse()
+	kubeconfig_path := "/Users/dboren/.kube/config"
 	// uses the current context in kubeconfig
-	config, err := clientcmd.BuildConfigFromFlags("", *kubeconfig)
+	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig_path)
 	if err != nil {
 		panic(err.Error())
 	}
+
 	// creates the clientset
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {

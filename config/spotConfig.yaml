@@ -1,0 +1,16 @@
+autoscalingGroupName:  prod-kubernetes-data-science-worker-scaling-WorkerASG-1C84ZD5UXRVNX
+maxAutoscalingNodes:  20
+historicalHours: 3
+regionNames:
+  - us-west-2
+maxCV: 0.1
+minGB: 30.0
+maxDollarsPerGB: 0.01
+maxDollarsPerCPU: 0.03
+maxPodKills: 20 
+maxTotalDollarsPerHour: 10.0
+minMarkupPercentage: 10
+memoryBufferPercentage: 5
+minPriceDifferencePercentage: 10
+
+

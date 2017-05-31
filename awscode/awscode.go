@@ -297,12 +297,14 @@ func GetSpotPrices(sess *session.Session, instanceTypes []string,
 
 	ec2_svc := ec2.New(sess)
 
-	awsRegionNames := Map(regionNames, ToAwsString)
+	// awsRegionNames := Map(regionNames, ToAwsString)
+
+	// fmt.Printf("\nRegionNames: %v\n", awsRegionNames)
 
 	req := ec2.DescribeAvailabilityZonesInput{
 		Filters: []*ec2.Filter{{
 			Name:   aws.String("region-name"),
-			Values: awsRegionNames}}}
+			Values: []*string{aws.String("us-west-2")}}}}
 	zones, err := ec2_svc.DescribeAvailabilityZones(&req)
 
 	if err != nil {

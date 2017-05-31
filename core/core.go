@@ -108,10 +108,14 @@ func GetSpotConfig() awscode.SpotConfig {
 func RunDaemon(monitor bool, spotConfig awscode.SpotConfig) {
 
 	for {
+		fmt.Printf("SpotConfig: %v\n", spotConfig)
 		clientset := k8code.GetClientSet()
 		sess := session.Must(session.NewSessionWithOptions(session.Options{
 			SharedConfigState: session.SharedConfigEnable,
 		}))
+		// sess := session.Must(session.NewSession(&aws.Config{
+		// 	Region: aws.String(spotConfig.RegionName),
+		// }))
 
 		podSummary := k8code.SummarizePods(clientset)
 		fmt.Printf(
@@ -122,6 +126,7 @@ func RunDaemon(monitor bool, spotConfig awscode.SpotConfig) {
 			int(podSummary["totalRunningPods"]))
 
 		if int(podSummary["totalRunningPods"]) < spotConfig.MaxPodKills {
+			// sess := session.Must(session.NewSession())
 			priceList := pricing.DescribePricing(sess, spotConfig)
 			UpdateLaunchConfiguration(sess, spotConfig, priceList, podSummary, clientset, monitor)
 		} else {

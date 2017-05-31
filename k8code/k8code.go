@@ -4,16 +4,18 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api/v1"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	// "github.com/aws/aws-sdk-go/service/autoscaling"
 )
 
 func GetClientSet() *kubernetes.Clientset {
-	kubeconfig_path := "/Users/dboren/.kube/config"
-	// uses the current context in kubeconfig
-	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig_path)
+	config, err := rest.InClusterConfig()
 	if err != nil {
-		panic(err.Error())
+		config, err = clientcmd.BuildConfigFromFlags("", "/Users/dboren/.kube/config")
+		if err != nil {
+			panic(err.Error())
+		}
 	}
 
 	// creates the clientset

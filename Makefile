@@ -1,7 +1,7 @@
 CONFIG_DEBUG ?=-debug
 
 config.go:
-	go run vendor/github.com/jteeuwen/go-bindata/go-bindata/*.go -o config/config.go -pkg config $(CONFIG_DEBUG) config/
+	go run vendor/github.com/jteeuwen/go-bindata/go-bindata/*.go -o config/config.go -pkg config $(CONFIG_DEBUG) config/machines.yaml
 
 build: config.go | dist
 	go build -o dist/k8-spot-daemon

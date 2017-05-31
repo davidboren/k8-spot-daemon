@@ -181,20 +181,20 @@ func GetInstanceTypes(sess *session.Session) {
 }
 
 type SpotConfig struct {
-	MaxCV                        float64 `yaml:"maxCV"`
-	MinGB                        float64 `yaml:"minGB"`
-	MaxDollarsPerGB              float64 `yaml:"maxDollarsPerGB"`
-	MaxDollarsPerCPU             float64 `yaml:"maxDollarsPerCPU"`
-	AutoscalingGroupName         string  `yaml:"autoscalingGroupName"`
-	MaxAutoscalingNodes          int     `yaml:"maxAutoscalingNodes"`
-	HistoricalHours              float64 `yaml:"historicalHours"`
-	RegionName                   string  `yaml:"regionName"`
-	MaxTotalDollarsPerHour       float64 `yaml:"maxTotalDollarsPerHour"`
-	MinMarkupPercentage          float64 `yaml:"minMarkupPercentage"`
-	MinPriceDifferencePercentage float64 `yaml:"minPriceDifferencePercentage"`
-	MaxPodKills                  int     `yaml:"maxPodKills"`
-	MemoryBufferPercentage       float64 `yaml:"memoryBufferPercentage"`
-	UpdateIntervalSeconds        float64 `yaml:"updateIntervalSeconds"`
+	MaxCV                        float64
+	MinGB                        float64
+	MaxDollarsPerGB              float64
+	MaxDollarsPerCPU             float64
+	AutoscalingGroupName         string
+	MaxAutoscalingNodes          int
+	HistoricalHours              float64
+	RegionName                   string
+	MaxTotalDollarsPerHour       float64
+	MinMarkupPercentage          float64
+	MinPriceDifferencePercentage float64
+	MaxPodKills                  int
+	MemoryBufferPercentage       float64
+	UpdateIntervalSeconds        float64
 }
 
 func GetSpotConfigFromCommand(cmd *cobra.Command) SpotConfig {

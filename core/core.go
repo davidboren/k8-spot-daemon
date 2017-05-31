@@ -6,14 +6,12 @@ import (
 	"strconv"
 	"time"
 
-	yaml "gopkg.in/yaml.v2"
-
 	"k8s.io/client-go/kubernetes"
 
+	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/autoscaling"
 	"github.com/davidboren/k8-spot-daemon/awscode"
-	instanceConfig "github.com/davidboren/k8-spot-daemon/config"
 	"github.com/davidboren/k8-spot-daemon/k8code"
 	"github.com/davidboren/k8-spot-daemon/pricing"
 )
@@ -46,9 +44,9 @@ func UpdateLaunchConfiguration(sess *session.Session, spotConfig awscode.SpotCon
 	for _, instanceSummary := range priceList {
 		maxTotalDollarsPerHour := float64(maxNodes) * instanceSummary.Price
 		nodesNeeded := math.Max(1, math.Ceil(podSummary["totalMemoryRequestedGB"]/instanceSummary.Mem))
-		currentSpotPrice := math.Max(
+		currentSpotPrice := math.Ceil(100.0*math.Max(
 			instanceSummary.Price*(1.0+spotConfig.MinMarkupPercentage*0.01),
-			instanceSummary.Price+2.97*instanceSummary.StdDev)
+			instanceSummary.Price+2.97*instanceSummary.StdDev)) / 100.0
 		actualDollarsPerHour := math.Min(float64(nodesNeeded), float64(maxNodes)) * currentSpotPrice
 		if instanceSummary.Mem >= maxMemoryRequired {
 			if maxTotalDollarsPerHour < spotConfig.MaxTotalDollarsPerHour {
@@ -95,27 +93,17 @@ func UpdateLaunchConfiguration(sess *session.Session, spotConfig awscode.SpotCon
 	}
 }
 
-func GetSpotConfig() awscode.SpotConfig {
-	asset, _ := instanceConfig.Asset("config/spotConfig.yaml")
-	var spotConfig awscode.SpotConfig
-
-	yaml.Unmarshal(asset, &spotConfig)
-
-	return spotConfig
-
-}
-
 func RunDaemon(monitor bool, spotConfig awscode.SpotConfig) {
 
 	for {
 		fmt.Printf("SpotConfig: %v\n", spotConfig)
 		clientset := k8code.GetClientSet()
-		sess := session.Must(session.NewSessionWithOptions(session.Options{
-			SharedConfigState: session.SharedConfigEnable,
-		}))
-		// sess := session.Must(session.NewSession(&aws.Config{
-		// 	Region: aws.String(spotConfig.RegionName),
+		// sess := session.Must(session.NewSessionWithOptions(session.Options{
+		// 	SharedConfigState: session.SharedConfigEnable,
 		// }))
+		sess := session.Must(session.NewSession(&aws.Config{
+			Region: aws.String(spotConfig.RegionName),
+		}))
 
 		podSummary := k8code.SummarizePods(clientset)
 		fmt.Printf(

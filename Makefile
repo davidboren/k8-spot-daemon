@@ -1,7 +1,7 @@
 CONFIG_DEBUG ?=-debug
 
 config.go:
-	go run vendor/github.com/jteeuwen/go-bindata/go-bindata/*.go -o config/config.go -pkg config $(CONFIG_DEBUG) config/
+	go run vendor/github.com/jteeuwen/go-bindata/go-bindata/*.go -o config/config.go -pkg config $(CONFIG_DEBUG) config/machines.yaml
 
 build: config.go | dist
 	go build -o dist/k8-spot-daemon
@@ -9,10 +9,15 @@ build: config.go | dist
 dist:
 	[ -d dist ] || mkdir dist
 
+dist/k8-spot-daemon-linux-x86: config.go dist
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o dist/k8-spot-daemon-linux-x86
+
+
 linux: dist/k8-spot-daemon-linux-x86
 
-release: clean routes-debug
-	docker build -t k8-spot-daemon:latest .
+release: linux
+	docker build -t dboren/k8-spot-daemon:latest ./
+	docker push dboren/k8-spot-daemon:latest
 
 clean:
 	rm -rf dist

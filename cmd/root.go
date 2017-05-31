@@ -5,7 +5,6 @@ import (
 	"os"
 
 	"github.com/davidboren/k8-spot-daemon/awscode"
-	"github.com/davidboren/k8-spot-daemon/core"
 	"github.com/spf13/cobra"
 )
 
@@ -31,7 +30,22 @@ func Execute() {
 
 func init() {
 
-	spotConfig = core.GetSpotConfig()
+	var spotConfig awscode.SpotConfig = awscode.SpotConfig{
+		AutoscalingGroupName:         "prod-kubernetes-data-science-worker-scaling-WorkerASG-1C84ZD5UXRVNX",
+		MaxAutoscalingNodes:          20,
+		HistoricalHours:              3,
+		RegionName:                   "us-west-2",
+		MaxCV:                        0.05,
+		MinGB:                        30.0,
+		MaxDollarsPerGB:              0.01,
+		MaxDollarsPerCPU:             0.03,
+		MaxPodKills:                  20,
+		MaxTotalDollarsPerHour:       12.0,
+		MinMarkupPercentage:          10,
+		MemoryBufferPercentage:       5,
+		MinPriceDifferencePercentage: 10,
+		UpdateIntervalSeconds:        300,
+	}
 
 	RootCmd.PersistentFlags().StringVarP(
 		&spotConfig.AutoscalingGroupName,

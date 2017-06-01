@@ -157,11 +157,7 @@ func RunDaemon(monitor bool, spotConfig awscode.SpotConfig) {
 	for {
 		updated := false
 		fmt.Printf("Checking prices at %v\n", time.Now())
-		// fmt.Printf("SpotConfig: %v\n", spotConfig)
 		clientset := k8code.GetClientSet()
-		// sess := session.Must(session.NewSessionWithOptions(session.Options{
-		// 	SharedConfigState: session.SharedConfigEnable,
-		// }))
 		sess := session.Must(session.NewSession(&aws.Config{
 			Region: aws.String(spotConfig.RegionName),
 		}))
@@ -177,7 +173,6 @@ func RunDaemon(monitor bool, spotConfig awscode.SpotConfig) {
 		fmt.Printf("")
 
 		if int(podSummary["totalRunningPods"]) < spotConfig.MaxPodKills {
-			// sess := session.Must(session.NewSession())
 			priceList := pricing.DescribePricing(sess, spotConfig)
 			updated = UpdateLaunchConfiguration(sess, spotConfig, priceList, podSummary, clientset, monitor)
 		} else {

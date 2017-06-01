@@ -1,11 +1,7 @@
 package awscode
 
 import (
-	"encoding/csv"
-	"errors"
 	"fmt"
-	"os"
-	"regexp"
 	"strings"
 	"time"
 
@@ -13,44 +9,8 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/autoscaling"
 	"github.com/aws/aws-sdk-go/service/ec2"
-	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/spf13/cobra"
 )
-
-func GetNewestFeed(svc *s3.S3, bucketName string, feedPrefix string) (string, error) {
-	params := &s3.ListObjectsInput{
-		Bucket: aws.String(bucketName),
-		Prefix: aws.String(feedPrefix),
-	}
-
-	resp, _ := svc.ListObjects(params)
-	baseTime := "2006-01-02-15"
-	newest := ""
-	newestTime, _ := time.Parse(baseTime, "2017-01-01-00")
-
-	r, _ := regexp.Compile("spot-data-feeds/[\\d+]+\\.([\\d\\-]+)\\.")
-
-	for _, key := range resp.Contents {
-		timeMatch := r.FindStringSubmatch(*key.Key)
-		if len(timeMatch) == 0 {
-			continue
-		}
-		rawTime := timeMatch[0]
-		parsedTime, _ := time.Parse(baseTime, rawTime)
-		if parsedTime.After(newestTime) {
-			newestTime = parsedTime
-			newest = *key.Key
-		}
-		fmt.Printf("RawDate: %v | ParsedDate: %v", rawTime, parsedTime)
-	}
-	if newest == "" {
-		return "", errors.New("There are no keys under the 'spot-data-feeds/' prefix that conform" +
-			"to standard spot pricing naming conventions...")
-	}
-
-	return newest, nil
-
-}
 
 type SpotDetails struct {
 	Timestamp   string
@@ -62,46 +22,6 @@ type SpotDetails struct {
 	MarketPrice string
 	Charge      string
 	Version     string
-}
-
-func ReadDetails(filename string) []SpotDetails {
-	csvFile, err := os.Open(filename)
-
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	defer csvFile.Close()
-
-	reader := csv.NewReader(csvFile)
-
-	reader.Comma = '\t' // Use tab-delimited instead of comma <---- here!
-
-	reader.FieldsPerRecord = -1
-
-	csvData, err := reader.ReadAll()
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
-
-	var oneRecord SpotDetails
-	var allRecords []SpotDetails
-
-	for _, each := range csvData {
-		oneRecord.Timestamp = each[0]
-		oneRecord.UsageType = each[1]
-		oneRecord.Operation = each[2]
-		oneRecord.InstanceID = each[3]
-		oneRecord.MyBidID = each[4]
-		oneRecord.MyMaxPrice = each[5]
-		oneRecord.MarketPrice = each[6]
-		oneRecord.Charge = each[7]
-		oneRecord.Version = each[8]
-		allRecords = append(allRecords, oneRecord)
-	}
-	return allRecords
-
 }
 
 func Map(vs []string, f func(string) *string) []*string {
@@ -132,22 +52,10 @@ func DescribeSpotPriceHistory(sess *session.Session, instanceTypes []string,
 		AvailabilityZone: aws.String(availabilityZone),
 		DryRun:           aws.Bool(false),
 		EndTime:          aws.Time(time.Now()),
-		// Filters: []*ec2.Filter{
-		// 	{ // Required
-		// 		Name: aws.String("String"),
-		// 		Values: []*string{
-		// 			aws.String("String"), // Required
-		// 			// More values...
-		// 		},
-		// 	},
-		// 	// More values...
-		// },
-		InstanceTypes: awsInstanceTypes,
-		MaxResults:    aws.Int64(1000),
-		// NextToken:     aws.String("String"),
+		InstanceTypes:    awsInstanceTypes,
+		MaxResults:       aws.Int64(1000),
 		ProductDescriptions: []*string{
 			aws.String("Linux/UNIX"), // Required
-			// More values...
 		},
 		StartTime: startTime,
 	}
@@ -307,8 +215,6 @@ func GetSpotPrices(sess *session.Session, instanceTypes []string,
 	ec2_svc := ec2.New(sess)
 
 	awsRegionNames := Map(regionNames, ToAwsString)
-
-	// fmt.Printf("\nRegionNames: %v\n", awsRegionNames)
 
 	req := ec2.DescribeAvailabilityZonesInput{
 		Filters: []*ec2.Filter{{

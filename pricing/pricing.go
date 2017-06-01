@@ -112,7 +112,6 @@ func CompileAverages(sess *session.Session, instanceDetails map[string]InstanceD
 	for _, obj := range instanceDetails {
 		instanceTypes = append(instanceTypes, obj.Name)
 	}
-	// fmt.Printf("instanceTypes: %v\n", instanceTypes)
 	if len(instanceTypes) == 0 {
 		panic("You have no instanceTypes...")
 	}
@@ -120,7 +119,6 @@ func CompileAverages(sess *session.Session, instanceDetails map[string]InstanceD
 	sumList := []FullSummary{}
 	now := time.Now()
 	for _, intype := range instanceTypes {
-		// fmt.Printf("History for %v: %v\n\n", intype, priceMap[intype])
 		weightSum := 0.0
 		timestamps := []time.Time{}
 		prices := []float64{}
@@ -138,7 +136,6 @@ func CompileAverages(sess *session.Session, instanceDetails map[string]InstanceD
 			curPrice := prices[i]
 			weight := weights[i]
 			priceSum += curPrice * weight / weightSum
-			// fmt.Printf("Price for %v: %v | Weight: %v Total Weight %v\n\n", intype, curPrice, weight, weightSum)
 		}
 		inDet := instanceDetails[intype]
 		cv, std := Volatility(prices)

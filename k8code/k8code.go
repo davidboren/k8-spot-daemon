@@ -63,7 +63,6 @@ func SummarizePods(clientset *kubernetes.Clientset) map[string]float64 {
 	for _, pod := range pods.Items {
 		q := pod.Spec.Containers[0].Resources.Requests["memory"]
 		gb, _ := q.AsInt64()
-		// fmt.Printf("Pod '%v' Size: %v\n", pod.Name, float64(gb)/(1024*1024*1000))
 		if pod.Namespace != "kube-system" {
 			if max_mem < gb {
 				max_mem = gb
@@ -74,11 +73,8 @@ func SummarizePods(clientset *kubernetes.Clientset) map[string]float64 {
 				tot_running_pods += 1
 			} else if pod.Status.Phase == v1.PodPending {
 				tot_mem_requested += gb
-				// fmt.Printf("Pod '%v' status: '%v'", pod.Name, pod.Status.Phase)
 			}
 		}
-		// tot_mem_requested += gb
-		// fmt.Printf("Pod %60v Memory: %15.3f Bytes\n", pod.ObjectMeta.Name, float64(gb))
 	}
 	return map[string]float64{
 		"totalMemoryRequestedGB": float64(tot_mem_requested) / (1024 * 1024 * 1000),

@@ -1,6 +1,9 @@
 package k8code
 
 import (
+	"os/user"
+	"path/filepath"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api/v1"
@@ -12,7 +15,9 @@ import (
 func GetClientSet() *kubernetes.Clientset {
 	config, err := rest.InClusterConfig()
 	if err != nil {
-		config, err = clientcmd.BuildConfigFromFlags("", "/Users/dboren/.kube/config")
+		usr, _ := user.Current()
+		dir := usr.HomeDir
+		config, err = clientcmd.BuildConfigFromFlags("", filepath.Join(dir, ".kube", "config"))
 		if err != nil {
 			panic(err.Error())
 		}

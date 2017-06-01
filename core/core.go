@@ -2,6 +2,7 @@ package core
 
 import (
 	"fmt"
+	"hash/fnv"
 	"math"
 	"strconv"
 	"time"
@@ -16,13 +17,29 @@ import (
 	"github.com/davidboren/k8-spot-daemon/pricing"
 )
 
+func hash(s string) uint32 {
+	h := fnv.New32a()
+	h.Write([]byte(s))
+	return h.Sum32()
+}
+
 func UpdateLaunchConfiguration(sess *session.Session, spotConfig awscode.SpotConfig,
 	priceList []pricing.FullSummary, podSummary map[string]float64,
-	clientset *kubernetes.Clientset, monitor bool) {
+	clientset *kubernetes.Clientset, monitor bool) bool {
 	maxNodes := spotConfig.MaxAutoscalingNodes
-	autoscalerName := spotConfig.AutoscalingGroupName
+	autoscalerName := spotConfig.AutoScalingGroupName
 	autoscaler := awscode.GetAutoscaler(sess, autoscalerName)
-	launchConfiguration := awscode.GetLaunchConfiguration(sess, *autoscaler.LaunchConfigurationName)
+	allLaunchConfigurations := awscode.GetLaunchConfigurations(sess, spotConfig.LaunchConfigurationPrefix)
+	var launchConfiguration *autoscaling.LaunchConfiguration
+	for _, lc := range allLaunchConfigurations {
+		if *lc.LaunchConfigurationName == *autoscaler.LaunchConfigurationName {
+			launchConfiguration = lc
+		}
+	}
+
+	if launchConfiguration == nil {
+		panic("Could not identify launchConfiguration currently in use by autoscaler...")
+	}
 
 	originalSpotPrice, _ := strconv.ParseFloat(*launchConfiguration.SpotPrice, 64)
 	newInstanceType := *launchConfiguration.InstanceType
@@ -70,33 +87,77 @@ func UpdateLaunchConfiguration(sess *session.Session, spotConfig awscode.SpotCon
 		if scaleMemory || newInstanceType != *launchConfiguration.InstanceType ||
 			math.Abs(newSpotPrice-originalSpotPrice) > (0.01*spotConfig.MinPriceDifferencePercentage)*originalSpotPrice {
 			newSpotPriceString := strconv.FormatFloat(newSpotPrice, 'f', 2, 64)
-			fmt.Printf("\nLaunchconfiguration '%v' modified\n\n", *launchConfiguration.LaunchConfigurationName)
-			fmt.Printf("Original Configuration:\nInstanceType: '%v'\nSpotPrice: '%v'\n\n",
+			fmt.Printf("\nOriginal Configuration:\n        InstanceType: '%v'\n        SpotPrice: '%v'\n",
 				*launchConfiguration.InstanceType,
 				*launchConfiguration.SpotPrice)
-			fmt.Printf("New Configuration:\nInstanceType: '%v'\nSpotPrice: '%v'\n",
+			fmt.Printf("New Configuration:\n        InstanceType: '%v'\n        SpotPrice: '%v'\n",
 				newInstanceType,
 				newSpotPriceString)
 			fmt.Printf("Total $ per Hour: '%v'\n",
 				minActualDollarsPerHour)
-			if !monitor {
-				createLaunchConfigurationInput := awscode.DuplicateLaunchConfiguration(launchConfiguration)
-				createLaunchConfigurationInput.SetSpotPrice(newSpotPriceString)
-				createLaunchConfigurationInput.SetInstanceType(newInstanceType)
+			createLaunchConfigurationInput := awscode.DuplicateLaunchConfiguration(launchConfiguration)
+			createLaunchConfigurationInput.SetSpotPrice(newSpotPriceString)
+			createLaunchConfigurationInput.SetInstanceType(newInstanceType)
+			t := time.Now()
+			newName := spotConfig.LaunchConfigurationPrefix + "-" + fmt.Sprintf("%v", hash(t.String()))
+			createLaunchConfigurationInput.SetLaunchConfigurationName(newName)
 
-				deleteLaunchConfigurationInput := autoscaling.DeleteLaunchConfigurationInput{
-					LaunchConfigurationName: launchConfiguration.LaunchConfigurationName}
-				fmt.Printf("Deleting LaunchConfiguration with input:\n%v\n", deleteLaunchConfigurationInput)
+			updateAutoScalingGroupInput := autoscaling.UpdateAutoScalingGroupInput{
+				AutoScalingGroupName:    autoscaler.AutoScalingGroupName,
+				LaunchConfigurationName: launchConfiguration.LaunchConfigurationName}
+			if !monitor {
+				fmt.Printf("Launchconfiguration '%v' will be created\n", *createLaunchConfigurationInput.LaunchConfigurationName)
 				fmt.Printf("Creating LaunchConfiguration with input:\n%v\n", createLaunchConfigurationInput)
+
+				// autoscaling_svc := autoscaling.New(sess)
+				// _, create_lc_err := autoscaling_svc.CreateLaunchConfiguration(&createLaunchConfigurationInput)
+				// if create_lc_err != nil {
+				// 	panic(create_lc_err)
+				// }
+
+				fmt.Printf("\nAutoScalingGroup '%v' will be updated\n", *autoscaler.AutoScalingGroupName)
+				fmt.Printf("Updating AutoScalingGroup with input:\n%v\n", updateAutoScalingGroupInput)
+				// _, update_asg_err := autoscaling_svc.UpdateAutoScalingGroup(&updateAutoScalingGroupInput)
+				// if update_asg_err != nil {
+				// 	panic(update_asg_err)
+				// }
+
+				for _, lc := range allLaunchConfigurations {
+					if newName != *lc.LaunchConfigurationName {
+						deleteLaunchConfigurationInput := autoscaling.DeleteLaunchConfigurationInput{
+							LaunchConfigurationName: lc.LaunchConfigurationName}
+						fmt.Printf("\nLaunchconfiguration '%v' will be deleted\n", *lc.LaunchConfigurationName)
+						fmt.Printf("\nDeleting LaunchConfiguration with input:\n%v\n", deleteLaunchConfigurationInput)
+						// _, delete_lc_err := autoscaling_svc.DeleteLaunchConfiguration(&deleteLaunchConfigurationInput)
+						// if delete_lc_err != nil {
+						// 	panic(delete_lc_err)
+						// }
+					}
+				}
+			} else {
+				fmt.Printf("")
+				fmt.Printf("Launchconfiguration '%v' would be created\n", *createLaunchConfigurationInput.LaunchConfigurationName)
+				fmt.Printf("AutoscalingGroup '%v' would be updated\n", *autoscaler.AutoScalingGroupName)
+				for _, lc := range allLaunchConfigurations {
+					if newName != *lc.LaunchConfigurationName {
+						fmt.Printf("Launchconfiguration '%v' would be deleted\n", *lc.LaunchConfigurationName)
+					}
+				}
 			}
+			return true
 		}
+		return false
+	} else {
+		return false
+
 	}
 }
 
 func RunDaemon(monitor bool, spotConfig awscode.SpotConfig) {
-
 	for {
-		fmt.Printf("SpotConfig: %v\n", spotConfig)
+		updated := false
+		fmt.Printf("Checking prices at %v\n", time.Now())
+		// fmt.Printf("SpotConfig: %v\n", spotConfig)
 		clientset := k8code.GetClientSet()
 		// sess := session.Must(session.NewSessionWithOptions(session.Options{
 		// 	SharedConfigState: session.SharedConfigEnable,
@@ -106,21 +167,29 @@ func RunDaemon(monitor bool, spotConfig awscode.SpotConfig) {
 		}))
 
 		podSummary := k8code.SummarizePods(clientset)
+		fmt.Printf("Kubernetes Usage:\n")
 		fmt.Printf(
-			"Total Memory Requested: %12.3f GB || Total Memory in Use: %12.3f GB || Max Memory: %8.3f GB || Num Pods: %v\n",
+			"    Total Memory Requested: %12.3f GB || Total Memory in Use: %12.3f GB || Max Memory: %8.3f GB || Num Pods: %v\n",
 			podSummary["totalMemoryRequestedGB"],
 			podSummary["totalMemoryUsedGB"],
 			podSummary["maxMemoryUsedGB"],
 			int(podSummary["totalRunningPods"]))
+		fmt.Printf("")
 
 		if int(podSummary["totalRunningPods"]) < spotConfig.MaxPodKills {
 			// sess := session.Must(session.NewSession())
 			priceList := pricing.DescribePricing(sess, spotConfig)
-			UpdateLaunchConfiguration(sess, spotConfig, priceList, podSummary, clientset, monitor)
+			updated = UpdateLaunchConfiguration(sess, spotConfig, priceList, podSummary, clientset, monitor)
 		} else {
 			fmt.Printf("Too many active pods (%v) to turn over cluster...\n", int(podSummary["totalRunningPods"]))
 		}
 
-		time.Sleep(time.Second * time.Duration(spotConfig.UpdateIntervalSeconds))
+		if updated {
+			fmt.Printf("AutoScalingGroup was updated.  Sleeping for '%v' seconds.\n", int(spotConfig.MinimumTurnoverSeconds))
+			time.Sleep(time.Second * time.Duration(spotConfig.MinimumTurnoverSeconds))
+		} else {
+			fmt.Printf("AutoScalingGroup was not updated.  Sleeping for '%v' seconds.\n", int(spotConfig.UpdateIntervalSeconds))
+			time.Sleep(time.Second * time.Duration(spotConfig.UpdateIntervalSeconds))
+		}
 	}
 }

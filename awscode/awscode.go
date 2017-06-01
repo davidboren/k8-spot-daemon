@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -185,7 +186,8 @@ type SpotConfig struct {
 	MinGB                        float64
 	MaxDollarsPerGB              float64
 	MaxDollarsPerCPU             float64
-	AutoscalingGroupName         string
+	AutoScalingGroupName         string
+	LaunchConfigurationPrefix    string
 	MaxAutoscalingNodes          int
 	HistoricalHours              float64
 	RegionName                   string
@@ -195,6 +197,7 @@ type SpotConfig struct {
 	MaxPodKills                  int
 	MemoryBufferPercentage       float64
 	UpdateIntervalSeconds        float64
+	MinimumTurnoverSeconds       float64
 }
 
 func GetSpotConfigFromCommand(cmd *cobra.Command) SpotConfig {
@@ -202,7 +205,8 @@ func GetSpotConfigFromCommand(cmd *cobra.Command) SpotConfig {
 	minGB, _ := cmd.PersistentFlags().GetFloat64("minGB")
 	maxDollarsPerGB, _ := cmd.PersistentFlags().GetFloat64("maxDollarsPerGB")
 	maxDollarsPerCPU, _ := cmd.PersistentFlags().GetFloat64("maxDollarsPerCPU")
-	autoscalingGroupName, _ := cmd.PersistentFlags().GetString("autoscalingGroupName")
+	autoScalingGroupName, _ := cmd.PersistentFlags().GetString("autoScalingGroupName")
+	launchConfigurationPrefix, _ := cmd.PersistentFlags().GetString("launchConfigurationPrefix")
 	maxAutoscalingNodes, _ := cmd.PersistentFlags().GetInt("maxAutoscalingNodes")
 	historicalHours, _ := cmd.PersistentFlags().GetFloat64("historicalHours")
 	regionName, _ := cmd.PersistentFlags().GetString("regionName")
@@ -212,13 +216,15 @@ func GetSpotConfigFromCommand(cmd *cobra.Command) SpotConfig {
 	maxPodKills, _ := cmd.PersistentFlags().GetInt("maxPodKills")
 	memoryBufferPercentage, _ := cmd.PersistentFlags().GetFloat64("memoryBufferPercentage")
 	updateIntervalSeconds, _ := cmd.PersistentFlags().GetFloat64("updateIntervalSeconds")
+	minimumTurnoverSeconds, _ := cmd.PersistentFlags().GetFloat64("minimumTurnoverSeconds")
 
 	return SpotConfig{
 		MaxCV:                        maxCV,
 		MinGB:                        minGB,
 		MaxDollarsPerGB:              maxDollarsPerGB,
 		MaxDollarsPerCPU:             maxDollarsPerCPU,
-		AutoscalingGroupName:         autoscalingGroupName,
+		AutoScalingGroupName:         autoScalingGroupName,
+		LaunchConfigurationPrefix:    launchConfigurationPrefix,
 		MaxAutoscalingNodes:          maxAutoscalingNodes,
 		HistoricalHours:              historicalHours,
 		RegionName:                   regionName,
@@ -227,7 +233,8 @@ func GetSpotConfigFromCommand(cmd *cobra.Command) SpotConfig {
 		MinPriceDifferencePercentage: minPriceDifferencePercentage,
 		MaxPodKills:                  maxPodKills,
 		MemoryBufferPercentage:       memoryBufferPercentage,
-		UpdateIntervalSeconds:        updateIntervalSeconds}
+		UpdateIntervalSeconds:        updateIntervalSeconds,
+		MinimumTurnoverSeconds:       minimumTurnoverSeconds}
 }
 
 func GetAutoscaler(sess *session.Session, autoscalerName string) *autoscaling.Group {
@@ -251,23 +258,25 @@ func GetAutoscaler(sess *session.Session, autoscalerName string) *autoscaling.Gr
 	return resp.AutoScalingGroups[0]
 }
 
-func GetLaunchConfiguration(sess *session.Session, launchConfigurationName string) *autoscaling.LaunchConfiguration {
+func GetLaunchConfigurations(sess *session.Session, launchConfigurationPrefix string) []*autoscaling.LaunchConfiguration {
 	autoscaling_svc := autoscaling.New(sess)
 
 	params := &autoscaling.DescribeLaunchConfigurationsInput{
-		LaunchConfigurationNames: []*string{aws.String(launchConfigurationName)},
-		MaxRecords:               aws.Int64(10),
+		MaxRecords: aws.Int64(100),
 	}
 	resp, err := autoscaling_svc.DescribeLaunchConfigurations(params)
 	if err != nil {
 		panic(err)
 	}
-	if len(resp.LaunchConfigurations) != 1 {
-		panic(fmt.Sprintf(
-			"You should not have more or less than 1 matched launchConfiguration to launchConfiguration name '%v'.  You have %v",
-			launchConfigurationName, len(resp.LaunchConfigurations)))
+	fmt.Printf("\nYou have '%v' total launchconfigurations\n", len(resp.LaunchConfigurations))
+	var launchConfigurations []*autoscaling.LaunchConfiguration = []*autoscaling.LaunchConfiguration{}
+	for _, lc := range resp.LaunchConfigurations {
+		if strings.Contains(*lc.LaunchConfigurationName, launchConfigurationPrefix) {
+			launchConfigurations = append(launchConfigurations, lc)
+		}
 	}
-	return resp.LaunchConfigurations[0]
+	fmt.Printf("\nYou have '%v' launchconfigurations prefixed by '%v'\n", len(launchConfigurations), launchConfigurationPrefix)
+	return launchConfigurations
 
 }
 
@@ -297,14 +306,14 @@ func GetSpotPrices(sess *session.Session, instanceTypes []string,
 
 	ec2_svc := ec2.New(sess)
 
-	// awsRegionNames := Map(regionNames, ToAwsString)
+	awsRegionNames := Map(regionNames, ToAwsString)
 
 	// fmt.Printf("\nRegionNames: %v\n", awsRegionNames)
 
 	req := ec2.DescribeAvailabilityZonesInput{
 		Filters: []*ec2.Filter{{
 			Name:   aws.String("region-name"),
-			Values: []*string{aws.String("us-west-2")}}}}
+			Values: awsRegionNames}}}
 	zones, err := ec2_svc.DescribeAvailabilityZones(&req)
 
 	if err != nil {

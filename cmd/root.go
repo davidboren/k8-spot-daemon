@@ -31,7 +31,8 @@ func Execute() {
 func init() {
 
 	var spotConfig awscode.SpotConfig = awscode.SpotConfig{
-		AutoscalingGroupName:         "prod-kubernetes-data-science-worker-scaling-WorkerASG-1C84ZD5UXRVNX",
+		AutoScalingGroupName:         "",
+		LaunchConfigurationPrefix:    "",
 		MaxAutoscalingNodes:          20,
 		HistoricalHours:              3,
 		RegionName:                   "us-west-2",
@@ -45,14 +46,22 @@ func init() {
 		MemoryBufferPercentage:       5,
 		MinPriceDifferencePercentage: 10,
 		UpdateIntervalSeconds:        300,
+		MinimumTurnoverSeconds:       1200,
 	}
 
 	RootCmd.PersistentFlags().StringVarP(
-		&spotConfig.AutoscalingGroupName,
-		"autoscalingGroupName",
+		&spotConfig.AutoScalingGroupName,
+		"autoScalingGroupName",
 		"q",
-		spotConfig.AutoscalingGroupName,
+		"",
 		"Set your aws Autoscaling Group Name")
+
+	RootCmd.PersistentFlags().StringVarP(
+		&spotConfig.LaunchConfigurationPrefix,
+		"launchConfigurationPrefix",
+		"l",
+		"",
+		"Set the prefix to use for all generated Launch Configurations")
 
 	RootCmd.PersistentFlags().IntVarP(
 		&spotConfig.MaxAutoscalingNodes,
@@ -134,6 +143,12 @@ func init() {
 		"u",
 		spotConfig.UpdateIntervalSeconds,
 		"Set the seconds to sleep between each spot price check.")
+
+	spotConfig.MinimumTurnoverSeconds = *RootCmd.PersistentFlags().Float64P(
+		"minimumTurnoverSeconds",
+		"v",
+		spotConfig.MinimumTurnoverSeconds,
+		"Set the mandatory wait time between re-configuring your AutoScalingGroup")
 
 	RootCmd.PersistentFlags().BoolVarP(
 		&monitor,

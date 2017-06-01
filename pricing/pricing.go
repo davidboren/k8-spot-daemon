@@ -65,10 +65,10 @@ func DescribePricing(sess *session.Session, spotConfig awscode.SpotConfig) []Ful
 		time.Duration(spotConfig.HistoricalHours), TimeWeight)
 
 	sort.Sort(ByPricePerGB(avgList))
-
+	fmt.Printf("Averaged Pricing Data for last '%v' hours: \n", spotConfig.HistoricalHours)
 	for _, obj := range avgList {
 		if obj.CoefVar < spotConfig.MaxCV {
-			fmt.Printf("%12v || Price: %7.3f | GB: %9.4f | Cpus: %3v | Cpus/GB: %0.3f | Price/GB: %8.4f | Price/Cpu: %3.4f | Coef of Var: %8.4f\n",
+			fmt.Printf("    %12v || Price: %7.3f | GB: %9.4f | Cpus: %3v | Cpus/GB: %0.3f | Price/GB: %8.4f | Price/Cpu: %3.4f | Coef of Var: %8.4f\n",
 				obj.Name,
 				obj.Price,
 				obj.Mem,
@@ -112,7 +112,10 @@ func CompileAverages(sess *session.Session, instanceDetails map[string]InstanceD
 	for _, obj := range instanceDetails {
 		instanceTypes = append(instanceTypes, obj.Name)
 	}
-	// fmt.Printf("instanceTypes:\n%v\n", instanceTypes)
+	// fmt.Printf("instanceTypes: %v\n", instanceTypes)
+	if len(instanceTypes) == 0 {
+		panic("You have no instanceTypes...")
+	}
 	priceMap := awscode.GetSpotPrices(sess, instanceTypes, regionNames, historicalHours)
 	sumList := []FullSummary{}
 	now := time.Now()

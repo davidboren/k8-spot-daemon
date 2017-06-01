@@ -91,7 +91,8 @@ func UpdateLaunchConfiguration(sess *session.Session, spotConfig awscode.SpotCon
 
 	if modified && int(podSummary["totalRunningPods"]) <= spotConfig.MaxPodKills {
 		if scaleMemory ||
-			math.Abs(minActualDollarsPerHour-originalDollarsPerHour) > (0.01*spotConfig.MinPriceDifferencePercentage)*originalDollarsPerHour {
+			(math.Abs(minActualDollarsPerHour-originalDollarsPerHour) > (0.01*spotConfig.MinPriceDifferencePercentage)*originalDollarsPerHour &&
+				(fmt.Sprintf("%v", newSpotPrice) != *launchConfiguration.SpotPrice || *launchConfiguration.InstanceType != newInstanceType)) {
 			newSpotPriceString := strconv.FormatFloat(newSpotPrice, 'f', 2, 64)
 			fmt.Printf("\nOriginal Configuration:\n        InstanceType: '%v'\n        SpotPrice: '%v'\n",
 				*launchConfiguration.InstanceType,

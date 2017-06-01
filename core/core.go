@@ -47,8 +47,14 @@ func UpdateLaunchConfiguration(sess *session.Session, spotConfig awscode.SpotCon
 	maxMemoryRequired := (1 + spotConfig.MemoryBufferPercentage*0.01) * podSummary["maxMemoryRequestedGB"]
 
 	scaleMemory := false
+	originalDollarsPerHour := spotConfig.MaxTotalDollarsPerHour
 	for _, instanceSummary := range priceList {
 		if instanceSummary.Name == *launchConfiguration.InstanceType {
+			nodesNeeded := math.Max(1, math.Ceil(podSummary["totalMemoryRequestedGB"]/instanceSummary.Mem))
+			currentSpotPrice := math.Ceil(100.0*math.Max(
+				instanceSummary.Price*(1.0+spotConfig.MinMarkupPercentage*0.01),
+				instanceSummary.Price+2.97*instanceSummary.StdDev)) / 100.0
+			originalDollarsPerHour = math.Min(float64(nodesNeeded), float64(maxNodes)) * currentSpotPrice
 			if instanceSummary.Mem < maxMemoryRequired {
 				scaleMemory = true
 			}
@@ -84,8 +90,8 @@ func UpdateLaunchConfiguration(sess *session.Session, spotConfig awscode.SpotCon
 	}
 
 	if modified && int(podSummary["totalRunningPods"]) <= spotConfig.MaxPodKills {
-		if scaleMemory || newInstanceType != *launchConfiguration.InstanceType ||
-			math.Abs(newSpotPrice-originalSpotPrice) > (0.01*spotConfig.MinPriceDifferencePercentage)*originalSpotPrice {
+		if scaleMemory ||
+			math.Abs(minActualDollarsPerHour-originalDollarsPerHour) > (0.01*spotConfig.MinPriceDifferencePercentage)*originalDollarsPerHour {
 			newSpotPriceString := strconv.FormatFloat(newSpotPrice, 'f', 2, 64)
 			fmt.Printf("\nOriginal Configuration:\n        InstanceType: '%v'\n        SpotPrice: '%v'\n",
 				*launchConfiguration.InstanceType,

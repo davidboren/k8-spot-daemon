@@ -55,9 +55,7 @@ func DescribePricing(sess *session.Session, spotConfig awscode.SpotConfig) []Ful
 	instanceDetails := ReadDetails()
 	bigInstanceTypes := map[string]InstanceDetails{}
 	for _, each := range instanceDetails {
-		if each.Mem >= float64(spotConfig.MinGB) {
-			bigInstanceTypes[each.Name] = each
-		}
+		bigInstanceTypes[each.Name] = each
 	}
 	regionNames := []string{spotConfig.RegionName}
 
@@ -67,17 +65,15 @@ func DescribePricing(sess *session.Session, spotConfig awscode.SpotConfig) []Ful
 	sort.Sort(ByPricePerGB(avgList))
 	fmt.Printf("Averaged Pricing Data for last '%v' hours: \n", spotConfig.HistoricalHours)
 	for _, obj := range avgList {
-		if obj.CoefVar < spotConfig.MaxCV {
-			fmt.Printf("    %12v || Price: %7.3f | GB: %9.4f | Cpus: %3v | Cpus/GB: %0.3f | Price/GB: %8.4f | Price/Cpu: %3.4f | Coef of Var: %8.4f\n",
-				obj.Name,
-				obj.Price,
-				obj.Mem,
-				obj.Cpus,
-				float64(obj.Cpus)/float64(obj.Mem),
-				obj.PricePerGB,
-				obj.PricePerCPU,
-				obj.CoefVar)
-		}
+		fmt.Printf("    %12v || Price: %7.3f | GB: %9.4f | Cpus: %3v | Cpus/GB: %0.3f | Price/GB: %8.4f | Price/Cpu: %3.4f | Coef of Var: %8.4f\n",
+			obj.Name,
+			obj.Price,
+			obj.Mem,
+			obj.Cpus,
+			float64(obj.Cpus)/float64(obj.Mem),
+			obj.PricePerGB,
+			obj.PricePerCPU,
+			obj.CoefVar)
 	}
 	return avgList
 }
@@ -136,6 +132,9 @@ func CompileAverages(sess *session.Session, instanceDetails map[string]InstanceD
 			curPrice := prices[i]
 			weight := weights[i]
 			priceSum += curPrice * weight / weightSum
+		}
+		if len(prices) == 0 {
+			continue
 		}
 		inDet := instanceDetails[intype]
 		cv, std := Volatility(prices)
